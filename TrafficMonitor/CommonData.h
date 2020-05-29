@@ -193,6 +193,7 @@ struct TaskBarSettingData : public PublicSettingData
 	bool horizontal_arrange{ true };	//水平排列
 	bool show_status_bar{ true };		//显示 CPU/内存的状态条
 	bool tbar_wnd_on_left{ false };		//如果为true，则任务栏窗口显示在任务栏的左侧（或上方）
+	bool cm_graph_type{ false };		//如果为false，默认原样式，柱状图显示占用率，如为true，滚动显示占用率
 };
 
 //选项设置中“常规设置”的数据
@@ -212,6 +213,7 @@ struct GeneralSettingData
 	Language language;
 
 	bool show_all_interface{ true };
+	bool m_get_cpu_usage_by_cpu_times{ true };	//获取CPU利用率的方式，如果为true则是使用GetSystemTimes，否则使用Pdh（性能计数器）
 
 	bool portable_mode{ false };		//便携模式，如果为true，则程序所有数据都保存到exe所在目录下，否则保存到Appdata\Romaing目录下
 };

@@ -196,6 +196,7 @@
     <ClInclude Include="AdapterCommon.h" />
     <ClInclude Include="CalendarHelper.h" />
     <ClInclude Include="CMFCColorDialogEx.h" />
+    <ClInclude Include="CPUUsage.h" />
     <ClInclude Include="crashtool.h" />
     <ClInclude Include="CTabCtrlEx.h" />
     <ClInclude Include="CVariant.h" />
@@ -241,6 +242,7 @@
     <ClCompile Include="AdapterCommon.cpp" />
     <ClCompile Include="CalendarHelper.cpp" />
     <ClCompile Include="CMFCColorDialogEx.cpp" />
+    <ClCompile Include="CPUUsage.cpp" />
     <ClCompile Include="crashtool.cpp" />
     <ClCompile Include="CTabCtrlEx.cpp" />
     <ClCompile Include="CVariant.cpp" />
@@ -292,7 +294,9 @@
   <ItemGroup>
     <Image Include="res\about_background.bmp" />
     <Image Include="res\about_background_hd.bmp" />
+    <Image Include="res\bitmap3.bmp" />
     <Image Include="res\donate.bmp" />
+    <Image Include="res\donate_wechart.bmp" />
     <Image Include="res\notifyicon.ico" />
     <Image Include="res\notifyicon2.ico" />
     <Image Include="res\notifyicon3.ico" />
