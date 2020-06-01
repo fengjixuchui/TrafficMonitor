@@ -44,7 +44,7 @@ END_MESSAGE_MAP()
 
 void CTaskBarDlg::ShowInfo(CDC* pDC)
 {
-	if (this->m_hWnd == NULL || pDC == nullptr) return;
+	if (this->GetSafeHwnd() == NULL || pDC == nullptr || !IsWindow(this->GetSafeHwnd())) return;
 	CString str;
 	CString in_speed = CCommon::DataSizeToString(theApp.m_in_speed, theApp.m_taskbar_data);
 	CString out_speed = CCommon::DataSizeToString(theApp.m_out_speed, theApp.m_taskbar_data);
@@ -265,7 +265,7 @@ void CTaskBarDlg::TryDrawStatusBar(CDrawCommon& drawer, const CRect& rect_bar, i
 
 bool CTaskBarDlg::AdjustWindowPos()
 {
-	if (this->m_hWnd == NULL)
+	if (this->GetSafeHwnd() == NULL || !IsWindow(this->GetSafeHwnd()))
 		return false;
 	CRect rcMin, rcBar;
 	::GetWindowRect(m_hMin, rcMin);	//获得最小化窗口的区域
@@ -346,6 +346,21 @@ bool CTaskBarDlg::AdjustWindowPos()
 		SetWindowPos(&wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);			//设置置顶
 	}
 	return true;
+}
+
+void CTaskBarDlg::ApplyWindowTransparentColor()
+{
+#ifndef COMPILE_FOR_WINXP
+	if (theApp.m_taskbar_data.transparent_color != 0 && theApp.m_taksbar_transparent_color_enable)
+	{
+		SetWindowLong(m_hWnd, GWL_EXSTYLE, GetWindowLong(m_hWnd, GWL_EXSTYLE) | WS_EX_LAYERED);
+		SetLayeredWindowAttributes(theApp.m_taskbar_data.transparent_color, 0, LWA_COLORKEY);
+	}
+	else
+	{
+		SetWindowLong(m_hWnd, GWL_EXSTYLE, GetWindowLong(m_hWnd, GWL_EXSTYLE) & ~WS_EX_LAYERED);
+	}
+#endif // !COMPILE_FOR_WINXP
 }
 
 
@@ -541,13 +556,7 @@ BOOL CTaskBarDlg::OnInitDialog()
 	m_hMin = ::FindWindowEx(m_hBar, 0, L"MSTaskSwWClass", NULL);	//寻找最小化窗口的句柄
 
 	//设置窗口透明色
-#ifndef COMPILE_FOR_WINXP
-	if(theApp.m_taskbar_data.transparent_color != 0 && theApp.m_taksbar_transparent_color_enable)
-	{
-		SetWindowLong(m_hWnd, GWL_EXSTYLE, GetWindowLong(m_hWnd, GWL_EXSTYLE) | WS_EX_LAYERED);
-		SetLayeredWindowAttributes(theApp.m_taskbar_data.transparent_color, 0, LWA_COLORKEY);
-	}
-#endif // !COMPILE_FOR_WINXP
+	ApplyWindowTransparentColor();
 
 	::GetWindowRect(m_hMin, m_rcMin);	//获得最小化窗口的区域
 	::GetWindowRect(m_hBar, m_rcBar);	//获得二级容器的区域
