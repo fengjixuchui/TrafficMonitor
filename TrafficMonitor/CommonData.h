@@ -9,11 +9,11 @@ struct HistoryTraffic
 	int month{};
 	int day{};
 	//unsigned int kBytes;	//当天使用的流量（以KB为单位）
-	unsigned int up_kBytes{};
-	unsigned int down_kBytes{};
+	unsigned __int64 up_kBytes{};
+	unsigned __int64 down_kBytes{};
 	bool mixed{ true };		//如果不区分上传和下载流量，则为true
 
-	unsigned int kBytes() const
+	unsigned __int64 kBytes() const
 	{
 		return up_kBytes + down_kBytes;
 	}
@@ -43,6 +43,7 @@ struct HistoryTraffic
 #define TRAFFIC_COLOR_GREEN RGB(128, 194, 105)
 #define TRAFFIC_COLOR_YELLOE RGB(255, 216, 58)
 #define TRAFFIC_COLOR_RED RGB(255, 95, 74)
+#define TRAFFIC_COLOR_DARK_RED RGB(166, 19, 0)
 
 //网速单位
 enum class SpeedUnit
@@ -121,6 +122,15 @@ struct FontInfo
 //将字号转成LOGFONT结构中的lfHeight
 #define FONTSIZE_TO_LFHEIGHT(font_size) (-MulDiv(font_size, GetDeviceCaps(::GetDC(HWND_DESKTOP), LOGPIXELSY), 72))
 
+//任务栏窗口显示的项目
+enum TaskbarDisplayItem
+{
+	TDI_UP = 1 << 0,
+	TDI_DOWN = 1 << 1,
+	TDI_CPU = 1 << 2,
+	TDI_MEMORY = 1 << 3
+};
+
 //选项设置数据
 struct MainConfigData
 {
@@ -132,7 +142,8 @@ struct MainConfigData
 	bool m_show_task_bar_wnd{ false };	//显示任务栏窗口
 	bool m_hide_main_window;			//隐藏主窗口
 	bool m_show_notify_icon{ true };	//显示通知区域图标
-	bool m_tbar_show_cpu_memory;		//任务栏窗口显示CPU和内存利用率
+	//bool m_tbar_show_cpu_memory;		//任务栏窗口显示CPU和内存利用率
+	unsigned int m_tbar_display_item{ TDI_UP | TDI_DOWN };		//任务栏窗口显示的项目
 
 	int m_position_x;	//窗口位置的x坐标
 	int m_position_y;	//窗口位置的y坐标

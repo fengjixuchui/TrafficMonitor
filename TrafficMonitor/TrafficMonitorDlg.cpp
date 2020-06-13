@@ -91,6 +91,7 @@ BEGIN_MESSAGE_MAP(CTrafficMonitorDlg, CDialogEx)
 	ON_UPDATE_COMMAND_UI(ID_ALOW_OUT_OF_BORDER, &CTrafficMonitorDlg::OnUpdateAlowOutOfBorder)
 	ON_COMMAND(ID_CHECK_UPDATE, &CTrafficMonitorDlg::OnCheckUpdate)
 	ON_MESSAGE(WM_TASKBAR_MENU_POPED_UP, &CTrafficMonitorDlg::OnTaskbarMenuPopedUp)
+	ON_COMMAND(ID_SHOW_NET_SPEED, &CTrafficMonitorDlg::OnShowNetSpeed)
 END_MESSAGE_MAP()
 
 
@@ -549,9 +550,9 @@ void CTrafficMonitorDlg::SaveHistoryTraffic()
 	{
 		char buff[64];
 		if (history_traffic.mixed)
-			sprintf_s(buff, "%.4d/%.2d/%.2d %u", history_traffic.year, history_traffic.month, history_traffic.day, history_traffic.down_kBytes);
+			sprintf_s(buff, "%.4d/%.2d/%.2d %llu", history_traffic.year, history_traffic.month, history_traffic.day, history_traffic.down_kBytes);
 		else
-			sprintf_s(buff, "%.4d/%.2d/%.2d %u/%u", history_traffic.year, history_traffic.month, history_traffic.day, history_traffic.up_kBytes, history_traffic.down_kBytes);
+			sprintf_s(buff, "%.4d/%.2d/%.2d %llu/%llu", history_traffic.year, history_traffic.month, history_traffic.day, history_traffic.up_kBytes, history_traffic.down_kBytes);
 		file << buff << std::endl;
 	}
 	file.close();
@@ -581,15 +582,15 @@ void CTrafficMonitorDlg::LoadHistoryTraffic()
 			if (traffic.mixed)
 			{
 				temp = current_line.substr(11);
-				traffic.down_kBytes = atoi(temp.c_str());
+				traffic.down_kBytes = atoll(temp.c_str());
 				traffic.up_kBytes = 0;
 			}
 			else
 			{
 				temp = current_line.substr(11, index - 11);
-				traffic.up_kBytes = atoi(temp.c_str());
+				traffic.up_kBytes = atoll(temp.c_str());
 				temp = current_line.substr(index + 1);
-				traffic.down_kBytes = atoi(temp.c_str());
+				traffic.down_kBytes = atoll(temp.c_str());
 			}
 			if (traffic.year > 0 && traffic.month > 0 && traffic.day > 0 && traffic.kBytes() > 0)
 				m_history_traffics.push_back(traffic);
@@ -1102,7 +1103,7 @@ void CTrafficMonitorDlg::OnTimer(UINT_PTR nIDEvent)
 		//每隔30秒保存一次流量历史记录
 		if (m_timer_cnt % 30 == 10)
 		{
-			static unsigned int last_today_kbytes;
+			static unsigned __int64 last_today_kbytes;
 			if (m_history_traffics[0].kBytes() - last_today_kbytes >= 100u)	//只有当流量变化超过100KB时才保存历史流量记录，防止磁盘写入过于频繁
 			{
 				SaveHistoryTraffic();
@@ -1269,7 +1270,8 @@ void CTrafficMonitorDlg::OnTimer(UINT_PTR nIDEvent)
 				theApp.m_taskbar_default_style.ApplyDefaultStyle(style_index, theApp.m_taskbar_data);
 				restart_taskbar_dlg = true;
 			}
-			if (!CTaskbarDefaultStyle::IsTaskbarTransparent(theApp.m_taskbar_data))
+			bool is_taskbar_transparent{ CTaskbarDefaultStyle::IsTaskbarTransparent(theApp.m_taskbar_data) };
+			if (!is_taskbar_transparent)
 			{
 				CTaskbarDefaultStyle::SetTaskabrTransparent(false, theApp.m_taskbar_data);
 				restart_taskbar_dlg = true;
@@ -1279,7 +1281,45 @@ void CTrafficMonitorDlg::OnTimer(UINT_PTR nIDEvent)
 				//m_tBarDlg->ApplyWindowTransparentColor();
 				CloseTaskBarWnd();
 				OpenTaskBarWnd();
+
+				//写入调试日志
+				if (theApp.m_debug_log)
+				{
+					CString log_str;
+					log_str += _T("检测到 Windows10 深浅色变化。\n");
+					log_str += _T("IsWindows10LightTheme: ");
+					log_str += std::to_wstring(light_mode).c_str();
+					log_str += _T("\n");
+					log_str += _T("auto_adapt_light_theme: ");
+					log_str += std::to_wstring(theApp.m_taskbar_data.auto_adapt_light_theme).c_str();
+					log_str += _T("\n");
+					log_str += _T("is_taskbar_transparent: ");
+					log_str += std::to_wstring(is_taskbar_transparent).c_str();
+					log_str += _T("\n");
+					log_str += _T("taskbar_back_color: ");
+					log_str += std::to_wstring(theApp.m_taskbar_data.back_color).c_str();
+					log_str += _T("\n");
+					log_str += _T("taskbar_transparent_color: ");
+					log_str += std::to_wstring(theApp.m_taskbar_data.transparent_color).c_str();
+					log_str += _T("\n");
+					log_str += _T("taskbar_text_colors: ");
+					for (int i{}; i < TASKBAR_COLOR_NUM; i++)
+					{
+						log_str += std::to_wstring(theApp.m_taskbar_data.text_colors[i]).c_str();
+						log_str += _T(", ");
+					}
+					log_str += _T("\n");
+					CCommon::WriteLog(log_str, (theApp.m_config_dir + L".\\taskbar_colors.log").c_str());
+				}
 			}
+		}
+
+		if (theApp.m_taskbar_data.back_color == 0 && theApp.m_taskbar_data.text_colors[0] == 0)		//当检测到背景色和文字颜色都为黑色写入错误日志
+		{
+			CString log_str;
+			log_str.Format(_T("检查到背景色和文字颜色都为黑色。IsWindows10LightTheme: %d, 系统启动时间：%d/%.2d/%.2d %.2d:%.2d:%.2d",
+				light_mode, m_start_time.wYear, m_start_time.wMonth, m_start_time.wDay, m_start_time.wHour, m_start_time.wMinute, m_start_time.wSecond));
+			CCommon::WriteLog(log_str, theApp.m_log_path.c_str());
 		}
 
 		UpdateNotifyIconTip();
@@ -1783,7 +1823,18 @@ void CTrafficMonitorDlg::OnShowCpuMemory2()
 	// TODO: 在此添加命令处理程序代码
 	if (m_tBarDlg != nullptr)
 	{
-		theApp.m_cfg_data.m_tbar_show_cpu_memory = !theApp.m_cfg_data.m_tbar_show_cpu_memory;
+		bool show_cpu_memory = ((theApp.m_cfg_data.m_tbar_display_item & TDI_CPU) || (theApp.m_cfg_data.m_tbar_display_item & TDI_MEMORY));
+		if (show_cpu_memory)
+		{
+			theApp.m_cfg_data.m_tbar_display_item &= ~TDI_CPU;
+			theApp.m_cfg_data.m_tbar_display_item &= ~TDI_MEMORY;
+		}
+		else
+		{
+			theApp.m_cfg_data.m_tbar_display_item |= TDI_CPU;
+			theApp.m_cfg_data.m_tbar_display_item |= TDI_MEMORY;
+		}
+		//theApp.m_cfg_data.m_tbar_show_cpu_memory = !theApp.m_cfg_data.m_tbar_show_cpu_memory;
 		//切换显示CPU和内存利用率时，删除任务栏窗口，再重新显示
 		CloseTaskBarWnd();
 		OpenTaskBarWnd();
@@ -2088,4 +2139,27 @@ afx_msg LRESULT CTrafficMonitorDlg::OnTaskbarMenuPopedUp(WPARAM wParam, LPARAM l
 	CMenu* select_connection_menu = m_tBarDlg->m_menu.GetSubMenu(0)->GetSubMenu(0);
 	SetConnectionMenuState(select_connection_menu);
 	return 0;
+}
+
+
+//任务栏窗口切换显示网速时的处理
+void CTrafficMonitorDlg::OnShowNetSpeed()
+{
+	// TODO: 在此添加命令处理程序代码
+	if (m_tBarDlg != nullptr)
+	{
+		bool show_net_speed = ((theApp.m_cfg_data.m_tbar_display_item & TDI_UP) || (theApp.m_cfg_data.m_tbar_display_item & TDI_DOWN));
+		if (show_net_speed)
+		{
+			theApp.m_cfg_data.m_tbar_display_item &= ~TDI_UP;
+			theApp.m_cfg_data.m_tbar_display_item &= ~TDI_DOWN;
+		}
+		else
+		{
+			theApp.m_cfg_data.m_tbar_display_item |= TDI_UP;
+			theApp.m_cfg_data.m_tbar_display_item |= TDI_DOWN;
+		}
+		CloseTaskBarWnd();
+		OpenTaskBarWnd();
+	}
 }
