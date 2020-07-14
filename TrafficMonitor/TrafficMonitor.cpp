@@ -7,6 +7,7 @@
 #include "TrafficMonitorDlg.h"
 #include "crashtool.h"
 #include "UpdateHelper.h"
+#include "Test.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -45,8 +46,8 @@ void CTrafficMonitorApp::LoadConfig()
 	m_general_data.allow_skin_cover_text = ini.GetBool(_T("general"), _T("allow_skin_cover_text"), true);
 	m_general_data.language = static_cast<Language>(ini.GetInt(_T("general"), _T("language"), 0));
 	m_general_data.show_all_interface = ini.GetBool(L"general", L"show_all_interface", false);
-	//载入获取CPU利用率的方式，Win10以下使用GetSystemTimes获取，由于此种方式在win10上会导致和任务管理器不一致，因此win10上默认通过性能计数器获取
-	m_general_data.m_get_cpu_usage_by_cpu_times = ini.GetBool(L"general", L"get_cpu_usage_by_cpu_times", m_win_version.GetMajorVersion() < 10);
+	//载入获取CPU利用率的方式，默认使用GetSystemTimes获取
+	m_general_data.m_get_cpu_usage_by_cpu_times = ini.GetBool(L"general", L"get_cpu_usage_by_cpu_times", /*m_win_version.GetMajorVersion() < 10*/ true);
 
 	//Windows10颜色模式设置
 	bool is_windows10_light_theme = m_win_version.IsWindows10LightTheme();
@@ -152,7 +153,7 @@ void CTrafficMonitorApp::LoadConfig()
 	m_taskbar_data.hide_percent = ini.GetBool(_T("task_bar"), _T("task_bar_hide_percent"), false);
 	m_taskbar_data.value_right_align = ini.GetBool(_T("task_bar"), _T("value_right_align"), false);
 	m_taskbar_data.horizontal_arrange = ini.GetBool(_T("task_bar"), _T("horizontal_arrange"), false);
-	m_taskbar_data.show_status_bar = ini.GetBool(_T("task_bar"), _T("show_status_bar"), true);
+	m_taskbar_data.show_status_bar = ini.GetBool(_T("task_bar"), _T("show_status_bar"), false);
 	m_taskbar_data.separate_value_unit_with_space = ini.GetBool(_T("task_bar"), _T("separate_value_unit_with_space"), true);
 	m_taskbar_data.show_tool_tip = ini.GetBool(_T("task_bar"), _T("show_tool_tip"), true);
 	m_taskbar_data.digits_number = ini.GetInt(_T("task_bar"), _T("digits_number"), 4);
@@ -170,6 +171,7 @@ void CTrafficMonitorApp::LoadConfig()
 	//其他设置
 	m_cfg_data.m_show_internet_ip = ini.GetBool(L"connection_details", L"show_internet_ip", false);
 	m_cfg_data.m_use_log_scale = ini.GetBool(_T("histroy_traffic"), _T("use_log_scale"), true);
+	m_cfg_data.m_sunday_first = ini.GetBool(_T("histroy_traffic"), _T("sunday_first"), true);
 
 	m_no_multistart_warning = ini.GetBool(_T("other"), _T("no_multistart_warning"), false);
 	m_notify_interval = ini.GetInt(_T("other"), _T("notify_interval"), 60);
@@ -178,6 +180,7 @@ void CTrafficMonitorApp::LoadConfig()
 	//由于Win7系统中设置任务栏窗口透明色会导致任务栏窗口不可见，因此默认在Win7中禁用透明色的设定
 	m_taksbar_transparent_color_enable = ini.GetBool(L"other", L"taksbar_transparent_color_enable", !m_win_version.IsWindows7());
 	m_last_light_mode = ini.GetBool(L"other", L"last_light_mode", m_win_version.IsWindows10LightTheme());
+	m_show_mouse_panetrate_tip = ini.GetBool(L"other", L"show_mouse_panetrate_tip", true);
 }
 
 void CTrafficMonitorApp::SaveConfig()
@@ -279,6 +282,7 @@ void CTrafficMonitorApp::SaveConfig()
 	//其他设置
 	ini.WriteBool(L"connection_details", L"show_internet_ip", m_cfg_data.m_show_internet_ip);
 	ini.WriteBool(L"histroy_traffic", L"use_log_scale", m_cfg_data.m_use_log_scale);
+	ini.WriteBool(L"histroy_traffic", L"sunday_first", m_cfg_data.m_sunday_first);
 
 	ini.WriteBool(_T("other"), _T("no_multistart_warning"), m_no_multistart_warning);
 	ini.WriteBool(_T("other"), _T("exit_when_start_by_restart_manager"), m_exit_when_start_by_restart_manager);
@@ -286,6 +290,7 @@ void CTrafficMonitorApp::SaveConfig()
 	ini.WriteInt(_T("other"), _T("notify_interval"), m_notify_interval);
 	ini.WriteBool(_T("other"), _T("taksbar_transparent_color_enable"), m_taksbar_transparent_color_enable);
 	ini.WriteBool(_T("other"), _T("last_light_mode"), m_last_light_mode);
+	ini.WriteBool(_T("other"), _T("show_mouse_panetrate_tip"), m_show_mouse_panetrate_tip);
 
 	ini.WriteString(L"app", L"version", VERSION);
 
@@ -640,6 +645,11 @@ BOOL CTrafficMonitorApp::InitInstance()
 		m_pUpdateThread = AfxBeginThread(CheckUpdateThreadFunc, NULL);
 	}
 #endif // !_DEBUG
+
+    //执行测试代码
+#ifdef _DEBUG
+    CTest::Test();
+#endif
 
 	CTrafficMonitorDlg dlg;
 	m_pMainWnd = &dlg;
