@@ -131,6 +131,15 @@ enum TaskbarDisplayItem
 	TDI_MEMORY = 1 << 3
 };
 
+//历史流量统计列表视图中显示模式
+enum class HistoryTrafficViewType
+{
+    HV_DAY,         //日视图
+    HV_MONTH,          //月视图
+    HV_QUARTER,     //季视图
+    HV_YEAR            //年视图
+};
+
 //选项设置数据
 struct MainConfigData
 {
@@ -155,10 +164,12 @@ struct MainConfigData
 	wstring m_skin_name;			//选择的皮肤的名称
 	int m_dft_notify_icon = 0;		//默认的通知图标(用于区分win10的深色和浅色模式)
 	int m_notify_icon_selected{};	//要显示的通知区图标
+    bool m_notify_icon_auto_adapt{ false }; //通知区图标是否自动适应Win10深浅色模式
 	bool m_alow_out_of_border{ false };		//是否允许悬浮窗超出屏幕边界
 
-	bool m_show_internet_ip{ false };		//是否在“连接详情”对话框中显示外网IP地址
+	//bool m_show_internet_ip{ false };		//是否在“连接详情”对话框中显示外网IP地址
 	bool m_use_log_scale{ false };			//“历史流量统计”对话框中绘制表示历史流量数值的矩形时是否使用对数比例
+    HistoryTrafficViewType m_view_type{};
 	bool m_sunday_first{ true };			//是否将周日作为一周的第一天
 };
 
@@ -233,7 +244,12 @@ struct GeneralSettingData
 	bool m_get_cpu_usage_by_cpu_times{ true };	//获取CPU利用率的方式，如果为true则是使用GetSystemTimes，否则使用Pdh（性能计数器）
 
 	bool portable_mode{ false };		//便携模式，如果为true，则程序所有数据都保存到exe所在目录下，否则保存到Appdata\Romaing目录下
+    int monitor_time_span{ 1000 };    //监控的时间间隔
 };
+
+//定义监控时间间隔有效的最大值和最小值
+#define MONITOR_TIME_SPAN_MIN 200
+#define MONITOR_TIME_SPAN_MAX 2000
 
 enum class Alignment
 {

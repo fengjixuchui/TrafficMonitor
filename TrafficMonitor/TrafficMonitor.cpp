@@ -8,6 +8,7 @@
 #include "crashtool.h"
 #include "UpdateHelper.h"
 #include "Test.h"
+#include "WIC.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -48,6 +49,9 @@ void CTrafficMonitorApp::LoadConfig()
 	m_general_data.show_all_interface = ini.GetBool(L"general", L"show_all_interface", false);
 	//载入获取CPU利用率的方式，默认使用GetSystemTimes获取
 	m_general_data.m_get_cpu_usage_by_cpu_times = ini.GetBool(L"general", L"get_cpu_usage_by_cpu_times", /*m_win_version.GetMajorVersion() < 10*/ true);
+    m_general_data.monitor_time_span = ini.GetInt(L"general", L"monitor_time_span", 1000);
+    if (m_general_data.monitor_time_span < MONITOR_TIME_SPAN_MIN || m_general_data.monitor_time_span > MONITOR_TIME_SPAN_MAX)
+        m_general_data.monitor_time_span = 1000;
 
 	//Windows10颜色模式设置
 	bool is_windows10_light_theme = m_win_version.IsWindows10LightTheme();
@@ -77,7 +81,10 @@ void CTrafficMonitorApp::LoadConfig()
 	if (m_cfg_data.m_skin_name.substr(0, 8) == L".\\skins\\")		//如果读取到的皮肤名称前面有".\\skins\\"，则把它删除。（用于和前一个版本保持兼容性）
 		m_cfg_data.m_skin_name = m_cfg_data.m_skin_name.substr(7);
 	m_cfg_data.m_notify_icon_selected = ini.GetInt(_T("config"), _T("notify_icon_selected"), (m_win_version.IsWindows7() || m_win_version.IsWindows8Or8point1() ? 2 : m_cfg_data.m_dft_notify_icon));		//Win7/8/8.1默认使用蓝色通知区图标，因为隐藏通知区图标后白色图标会看不清，其他系统默认使用白色图标
-	m_main_wnd_data.swap_up_down = ini.GetBool(_T("config"), _T("swap_up_down"), false);
+    m_cfg_data.m_notify_icon_auto_adapt = ini.GetBool(_T("config"), _T("notify_icon_auto_adapt"), true);
+    if(m_cfg_data.m_notify_icon_auto_adapt)
+        AutoSelectNotifyIcon();
+    m_main_wnd_data.swap_up_down = ini.GetBool(_T("config"), _T("swap_up_down"), false);
 	m_main_wnd_data.hide_main_wnd_when_fullscreen = ini.GetBool(_T("config"), _T("hide_main_wnd_when_fullscreen"), true);
 
 	FontInfo default_font{};
@@ -169,9 +176,10 @@ void CTrafficMonitorApp::LoadConfig()
 	m_taskbar_data.light_default_style = ini.GetInt(L"task_bar", L"light_default_style", TASKBAR_DEFAULT_LIGHT_STYLE_INDEX);
 
 	//其他设置
-	m_cfg_data.m_show_internet_ip = ini.GetBool(L"connection_details", L"show_internet_ip", false);
+	//m_cfg_data.m_show_internet_ip = ini.GetBool(L"connection_details", L"show_internet_ip", false);
 	m_cfg_data.m_use_log_scale = ini.GetBool(_T("histroy_traffic"), _T("use_log_scale"), true);
 	m_cfg_data.m_sunday_first = ini.GetBool(_T("histroy_traffic"), _T("sunday_first"), true);
+	m_cfg_data.m_view_type = static_cast<HistoryTrafficViewType>(ini.GetInt(_T("histroy_traffic"), _T("view_type"), static_cast<int>(HistoryTrafficViewType::HV_DAY)));
 
 	m_no_multistart_warning = ini.GetBool(_T("other"), _T("no_multistart_warning"), false);
 	m_notify_interval = ini.GetInt(_T("other"), _T("notify_interval"), 60);
@@ -194,6 +202,7 @@ void CTrafficMonitorApp::SaveConfig()
 	ini.WriteInt(_T("general"), _T("language"), static_cast<int>(m_general_data.language));
 	ini.WriteBool(L"general", L"show_all_interface", m_general_data.show_all_interface);
 	ini.WriteBool(L"general", L"get_cpu_usage_by_cpu_times", m_general_data.m_get_cpu_usage_by_cpu_times);
+    ini.WriteInt(L"general", L"monitor_time_span", m_general_data.monitor_time_span);
 
 	//主窗口设置
 	ini.WriteInt(L"config", L"transparency", m_cfg_data.m_transparency);
@@ -213,6 +222,7 @@ void CTrafficMonitorApp::SaveConfig()
 	ini.WriteString(L"connection", L"connection_name", CCommon::StrToUnicode(m_cfg_data.m_connection_name.c_str()).c_str());
 	ini.WriteString(_T("config"), _T("skin_selected"), m_cfg_data.m_skin_name.c_str());
 	ini.WriteInt(L"config", L"notify_icon_selected", m_cfg_data.m_notify_icon_selected);
+    ini.WriteBool(L"config", L"notify_icon_auto_adapt", m_cfg_data.m_notify_icon_auto_adapt);
 
 	ini.SaveFontData(L"config", m_main_wnd_data.font);
 
@@ -280,9 +290,10 @@ void CTrafficMonitorApp::SaveConfig()
 	ini.WriteInt(L"task_bar", L"light_default_style", m_taskbar_data.light_default_style);
 
 	//其他设置
-	ini.WriteBool(L"connection_details", L"show_internet_ip", m_cfg_data.m_show_internet_ip);
+	//ini.WriteBool(L"connection_details", L"show_internet_ip", m_cfg_data.m_show_internet_ip);
 	ini.WriteBool(L"histroy_traffic", L"use_log_scale", m_cfg_data.m_use_log_scale);
 	ini.WriteBool(L"histroy_traffic", L"sunday_first", m_cfg_data.m_sunday_first);
+    ini.WriteInt(L"histroy_traffic", L"view_type", static_cast<int>(m_cfg_data.m_view_type));
 
 	ini.WriteBool(_T("other"), _T("no_multistart_warning"), m_no_multistart_warning);
 	ini.WriteBool(_T("other"), _T("exit_when_start_by_restart_manager"), m_exit_when_start_by_restart_manager);
@@ -320,6 +331,13 @@ void CTrafficMonitorApp::LoadGlobalConfig()
 
 	CIniHelper ini{ global_cfg_path };
 	m_general_data.portable_mode = ini.GetBool(L"config", L"portable_mode", portable_mode_default);
+
+    //执行一次保存操作，以检查当前目录是否有写入权限
+    m_module_dir_writable = ini.Save();
+    if (!m_module_dir_writable)              //如果当前目录没有写入权限，则设置配置保存到AppData目录
+    {
+        m_general_data.portable_mode = false;
+    }
 }
 
 void CTrafficMonitorApp::SaveGlobalConfig()
@@ -328,18 +346,18 @@ void CTrafficMonitorApp::SaveGlobalConfig()
 	ini.WriteBool(L"config", L"portable_mode", m_general_data.portable_mode);
 
 	//检查是否保存成功
-	if (!ini.Save())
-	{
-		if (m_cannot_save_global_config_warning)
-		{
-			CString info;
-			info.LoadString(IDS_CONNOT_SAVE_CONFIG_WARNING);
-			info.Replace(_T("<%file_path%>"), m_module_dir.c_str());
-			AfxMessageBox(info, MB_ICONWARNING);
-		}
-		m_cannot_save_global_config_warning = false;
-		return;
-	}
+    if (!ini.Save())
+    {
+        //if (m_cannot_save_global_config_warning)
+        //{
+        //    CString info;
+        //    info.LoadString(IDS_CONNOT_SAVE_CONFIG_WARNING);
+        //    info.Replace(_T("<%file_path%>"), m_module_dir.c_str());
+        //    AfxMessageBox(info, MB_ICONWARNING);
+        //}
+        //m_cannot_save_global_config_warning = false;
+        //return;
+    }
 }
 
 int CTrafficMonitorApp::DPI(int pixel)
@@ -505,6 +523,82 @@ CString CTrafficMonitorApp::GetSystemInfoString()
 	return info;
 }
 
+
+void CTrafficMonitorApp::InitMenuResourse()
+{
+    //载入菜单
+    m_main_menu.LoadMenu(IDR_MENU1);
+    m_taskbar_menu.LoadMenu(IDR_TASK_BAR_MENU);
+
+    //为菜单项添加图标
+    //主窗口右键菜单
+    CMenuIcon::AddIconToMenuItem(m_main_menu.GetSubMenu(0)->GetSafeHmenu(), 0, TRUE, GetMenuIcon(IDI_CONNECTION));
+    CMenuIcon::AddIconToMenuItem(m_main_menu.GetSubMenu(0)->GetSafeHmenu(), 12, TRUE, GetMenuIcon(IDI_FUNCTION));
+    CMenuIcon::AddIconToMenuItem(m_main_menu.GetSafeHmenu(), ID_NETWORK_INFO, FALSE, GetMenuIcon(IDI_INFO));
+    CMenuIcon::AddIconToMenuItem(m_main_menu.GetSafeHmenu(), ID_ALWAYS_ON_TOP, FALSE, GetMenuIcon(IDI_PIN));
+    CMenuIcon::AddIconToMenuItem(m_main_menu.GetSafeHmenu(), ID_MOUSE_PENETRATE, FALSE, GetMenuIcon(IDI_MOUSE));
+    CMenuIcon::AddIconToMenuItem(m_main_menu.GetSafeHmenu(), ID_LOCK_WINDOW_POS, FALSE, GetMenuIcon(IDI_LOCK));
+    CMenuIcon::AddIconToMenuItem(m_main_menu.GetSafeHmenu(), ID_SHOW_NOTIFY_ICON, FALSE, GetMenuIcon(IDI_NOTIFY));
+    CMenuIcon::AddIconToMenuItem(m_main_menu.GetSafeHmenu(), ID_SHOW_CPU_MEMORY, FALSE, GetMenuIcon(IDI_MORE));
+    CMenuIcon::AddIconToMenuItem(m_main_menu.GetSafeHmenu(), ID_SHOW_TASK_BAR_WND, FALSE, GetMenuIcon(IDI_TASKBAR_WINDOW));
+    CMenuIcon::AddIconToMenuItem(m_main_menu.GetSafeHmenu(), ID_SHOW_MAIN_WND, FALSE, GetMenuIcon(IDI_MAIN_WINDOW));
+    CMenuIcon::AddIconToMenuItem(m_main_menu.GetSafeHmenu(), ID_CHANGE_SKIN, FALSE, GetMenuIcon(IDI_SKIN));
+    CMenuIcon::AddIconToMenuItem(m_main_menu.GetSafeHmenu(), ID_CHANGE_NOTIFY_ICON, FALSE, GetMenuIcon(IDI_NOTIFY));
+    CMenuIcon::AddIconToMenuItem(m_main_menu.GetSafeHmenu(), ID_TRAFFIC_HISTORY, FALSE, GetMenuIcon(IDI_STATISTICS));
+    CMenuIcon::AddIconToMenuItem(m_main_menu.GetSafeHmenu(), ID_OPTIONS, FALSE, GetMenuIcon(IDI_SETTINGS));
+    CMenuIcon::AddIconToMenuItem(m_main_menu.GetSafeHmenu(), ID_HELP, FALSE, GetMenuIcon(IDI_HELP));
+    CMenuIcon::AddIconToMenuItem(m_main_menu.GetSafeHmenu(), ID_APP_EXIT, FALSE, GetMenuIcon(IDI_EXIT));
+
+    //任务栏窗口右键菜单
+    CMenuIcon::AddIconToMenuItem(m_taskbar_menu.GetSubMenu(0)->GetSafeHmenu(), 0, TRUE, GetMenuIcon(IDI_CONNECTION));
+    CMenuIcon::AddIconToMenuItem(m_taskbar_menu.GetSafeHmenu(), ID_NETWORK_INFO, FALSE, GetMenuIcon(IDI_INFO));
+    CMenuIcon::AddIconToMenuItem(m_taskbar_menu.GetSafeHmenu(), ID_TRAFFIC_HISTORY, FALSE, GetMenuIcon(IDI_STATISTICS));
+    CMenuIcon::AddIconToMenuItem(m_taskbar_menu.GetSubMenu(0)->GetSafeHmenu(), 5, TRUE, GetMenuIcon(IDI_ITEM));
+    CMenuIcon::AddIconToMenuItem(m_taskbar_menu.GetSafeHmenu(), ID_SHOW_NOTIFY_ICON, FALSE, GetMenuIcon(IDI_NOTIFY));
+    CMenuIcon::AddIconToMenuItem(m_taskbar_menu.GetSafeHmenu(), ID_SHOW_MAIN_WND, FALSE, GetMenuIcon(IDI_MAIN_WINDOW));
+    CMenuIcon::AddIconToMenuItem(m_taskbar_menu.GetSafeHmenu(), ID_SHOW_TASK_BAR_WND, FALSE, GetMenuIcon(IDI_CLOSE));
+    CMenuIcon::AddIconToMenuItem(m_taskbar_menu.GetSafeHmenu(), ID_OPTIONS2, FALSE, GetMenuIcon(IDI_SETTINGS));
+    CMenuIcon::AddIconToMenuItem(m_taskbar_menu.GetSafeHmenu(), ID_HELP, FALSE, GetMenuIcon(IDI_HELP));
+    CMenuIcon::AddIconToMenuItem(m_taskbar_menu.GetSafeHmenu(), ID_APP_EXIT, FALSE, GetMenuIcon(IDI_EXIT));
+
+}
+
+HICON CTrafficMonitorApp::GetMenuIcon(UINT id)
+{
+    auto iter = m_menu_icons.find(id);
+    if (iter != m_menu_icons.end())
+    {
+        return iter->second;
+    }
+    else
+    {
+        HICON hIcon = CCommon::LoadIconResource(id, DPI(16));
+        m_menu_icons[id] = hIcon;
+        return hIcon;
+    }
+}
+
+void CTrafficMonitorApp::AutoSelectNotifyIcon()
+{
+    if (m_win_version.GetMajorVersion() >= 10)
+    {
+        bool light_mode = m_win_version.IsWindows10LightTheme();
+        if (light_mode)     //浅色模式下，如果图标是白色，则改成黑色
+        {
+            if (m_cfg_data.m_notify_icon_selected == 0)
+                m_cfg_data.m_notify_icon_selected = 4;
+            if (m_cfg_data.m_notify_icon_selected == 1)
+                m_cfg_data.m_notify_icon_selected = 5;
+        }
+        else     //深色模式下，如果图标是黑色，则改成白色
+        {
+            if (m_cfg_data.m_notify_icon_selected == 4)
+                m_cfg_data.m_notify_icon_selected = 0;
+            if (m_cfg_data.m_notify_icon_selected == 5)
+                m_cfg_data.m_notify_icon_selected = 1;
+        }
+    }
+}
 
 // 唯一的一个 CTrafficMonitorApp 对象
 

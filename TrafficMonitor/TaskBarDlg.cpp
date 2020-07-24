@@ -201,6 +201,8 @@ void CTaskBarDlg::ShowInfo(CDC* pDC)
 		CString format_str;
 		if (theApp.m_taskbar_data.hide_percent)
 			format_str = _T("%d");
+		else if (theApp.m_taskbar_data.separate_value_unit_with_space)
+			format_str = _T("%d %%");
 		else
 			format_str = _T("%d%%");
 		str.Format(format_str, theApp.m_cpu_usage);
@@ -531,6 +533,11 @@ void CTaskBarDlg::CalculateWindowWidth()
 		str1.Format(_T("%s100"), theApp.m_taskbar_data.disp_str.cpu.c_str());
 		str2.Format(_T("%s100"), theApp.m_taskbar_data.disp_str.memory.c_str());
 	}
+	else if (theApp.m_taskbar_data.separate_value_unit_with_space)
+	{
+		str1.Format(_T("%s100 %%"), theApp.m_taskbar_data.disp_str.cpu.c_str());
+		str2.Format(_T("%s100 %%"), theApp.m_taskbar_data.disp_str.memory.c_str());
+	}
 	else
 	{
 		str1.Format(_T("%s100%%"), theApp.m_taskbar_data.disp_str.cpu.c_str());
@@ -694,8 +701,6 @@ BOOL CTaskBarDlg::OnInitDialog()
 		this->MoveWindow(rect);
 	}
 
-	m_menu.LoadMenu(IDR_TASK_BAR_MENU);
-
 	SetBackgroundColor(theApp.m_taskbar_data.back_color);
 
 	//初始化鼠标提示
@@ -733,7 +738,7 @@ void CTaskBarDlg::OnRButtonUp(UINT nFlags, CPoint point)
 
 	CPoint point1;	//定义一个用于确定光标位置的位置  
 	GetCursorPos(&point1);	//获取当前光标的位置，以便使得菜单可以跟随光标  
-	m_menu.GetSubMenu(0)->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point1.x, point1.y, this); //在指定位置显示弹出菜单
+	theApp.m_taskbar_menu.GetSubMenu(0)->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point1.x, point1.y, this); //在指定位置显示弹出菜单
 	CDialogEx::OnRButtonUp(nFlags, point1);
 }
 

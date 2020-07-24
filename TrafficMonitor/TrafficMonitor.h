@@ -14,6 +14,7 @@
 #include "WinVersionHelper.h"
 #include "SimpleXML.h"
 #include "TaskbarDefaultStyle.h"
+#include <map>
 
 // CTrafficMonitorApp: 
 // 有关此类的实现，请参阅 TrafficMonitor.cpp
@@ -50,6 +51,8 @@ public:
 	bool m_cannot_save_config_warning{ true };	//指示是否会在无法保存设置时弹出提示框
 	bool m_cannot_save_global_config_warning{ true };	//指示是否会在无法保存设置时弹出提示框
 
+    bool m_module_dir_writable{ true };         //指示程序所在目录是否可写
+
 	//选项设置数据
 	MainWndSettingData m_main_wnd_data;
 	TaskBarSettingData m_taskbar_data;
@@ -70,6 +73,10 @@ public:
 	CTaskbarDefaultStyle m_taskbar_default_style;
 
 	HWND m_option_dlg{};		//选项设置对话框的句柄
+
+
+    CMenu m_main_menu;
+    CMenu m_taskbar_menu;
 
 public:
 	CTrafficMonitorApp();
@@ -94,12 +101,22 @@ public:
 	//获取系统信息文本
 	CString GetSystemInfoString();
 
+    void InitMenuResourse();
+
+    //获取一个图标资源，如果资源还未加载，会自动加载。
+    //由于本函数中使用了CTrafficMonitorApp::DPI函数，因此本函数必须确保在CTrafficMonitorApp::GetDPI之后调用
+    HICON GetMenuIcon(UINT id);
+
+    void AutoSelectNotifyIcon();
+
 private:
 	//int m_no_multistart_warning_time{};		//用于设置在开机后多长时间内不弹出“已经有一个程序正在运行”的警告提示
 	bool m_no_multistart_warning{};			//如果为false，则永远都不会弹出“已经有一个程序正在运行”的警告提示
 	bool m_exit_when_start_by_restart_manager{ true };		//如果程序被Windows重启管理器重新启动，则退出程序
 	int m_dpi{ 96 };
 	CWinThread* m_pUpdateThread;			//检查更新的线程
+
+    std::map<UINT, HICON> m_menu_icons;      //菜单图标资源。key是图标资源的ID，vlaue是图标的句柄
 
 // 重写
 public:
