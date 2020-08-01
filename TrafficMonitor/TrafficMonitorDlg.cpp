@@ -22,6 +22,7 @@ CTrafficMonitorDlg::CTrafficMonitorDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(IDD_TRAFFICMONITOR_DIALOG, pParent)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+    m_desktop_dc = ::GetDC(NULL);
 }
 
 CTrafficMonitorDlg::~CTrafficMonitorDlg()
@@ -33,6 +34,8 @@ CTrafficMonitorDlg::~CTrafficMonitorDlg()
 		delete m_tBarDlg;
 		m_tBarDlg = nullptr;
 	}
+
+    ::ReleaseDC(NULL, m_desktop_dc);
 }
 
 void CTrafficMonitorDlg::DoDataExchange(CDataExchange* pDX)
@@ -307,8 +310,8 @@ void CTrafficMonitorDlg::CheckWindowPos()
 
 void CTrafficMonitorDlg::GetScreenSize()
 {
-	//m_screen_width = GetSystemMetrics(SM_CXFULLSCREEN);
-	//m_screen_height = GetSystemMetrics(SM_CYFULLSCREEN) + compensition_value;
+    m_screen_size.cx = GetSystemMetrics(SM_CXSCREEN);
+    m_screen_size.cy = GetSystemMetrics(SM_CYSCREEN);
 
 	::SystemParametersInfo(SPI_GETWORKAREA, 0, &m_screen_rect, 0);   // 获得工作区大小
 }
@@ -1049,34 +1052,34 @@ void CTrafficMonitorDlg::OnTimer(UINT_PTR nIDEvent)
 			}
 		}
 
-		//只有主窗口和任务栏窗口至少有一个显示时才执行下面的处理
-		if (!theApp.m_cfg_data.m_hide_main_window || theApp.m_cfg_data.m_show_task_bar_wnd)
-		{
-			//获取CPU使用率
-			theApp.m_cpu_usage = m_cpu_usage.GetCPUUsage();
+		////只有主窗口和任务栏窗口至少有一个显示时才执行下面的处理
+		//if (!theApp.m_cfg_data.m_hide_main_window || theApp.m_cfg_data.m_show_task_bar_wnd)
+		//{
+		//获取CPU使用率
+		theApp.m_cpu_usage = m_cpu_usage.GetCPUUsage();
 
-			//获取内存利用率
-			MEMORYSTATUSEX statex;
-			statex.dwLength = sizeof(statex);
-			GlobalMemoryStatusEx(&statex);
-			theApp.m_memory_usage = statex.dwMemoryLoad;
-			theApp.m_used_memory = static_cast<int>((statex.ullTotalPhys - statex.ullAvailPhys) / 1024);
-			theApp.m_total_memory  = static_cast<int>(statex.ullTotalPhys / 1024);
+		//获取内存利用率
+		MEMORYSTATUSEX statex;
+		statex.dwLength = sizeof(statex);
+		GlobalMemoryStatusEx(&statex);
+		theApp.m_memory_usage = statex.dwMemoryLoad;
+		theApp.m_used_memory = static_cast<int>((statex.ullTotalPhys - statex.ullAvailPhys) / 1024);
+		theApp.m_total_memory  = static_cast<int>(statex.ullTotalPhys / 1024);
 
-			ShowInfo();		//刷新窗口信息
+		ShowInfo();		//刷新窗口信息
 	
-			//更新鼠标提示
-            if (theApp.m_main_wnd_data.show_tool_tip)
-            {
-                CString tip_info;
-                tip_info = GetMouseTipsInfo();
-                m_tool_tips.UpdateTipText(tip_info, this);
-            }
-			//更新任务栏窗口鼠标提示
-			if (IsTaskbarWndValid())
-				m_tBarDlg->UpdateToolTips();
+		//更新鼠标提示
+        if (theApp.m_main_wnd_data.show_tool_tip)
+        {
+            CString tip_info;
+            tip_info = GetMouseTipsInfo();
+            m_tool_tips.UpdateTipText(tip_info, this);
+        }
+		//更新任务栏窗口鼠标提示
+		if (IsTaskbarWndValid())
+			m_tBarDlg->UpdateToolTips();
 
-		}
+		//}
         m_monitor_time_cnt++;
 	}
 
@@ -1306,6 +1309,33 @@ void CTrafficMonitorDlg::OnTimer(UINT_PTR nIDEvent)
                         AddNotifyIcon();
                     }
                 }
+            }
+
+        }
+
+        //根据任务栏颜色自动设置任务栏窗口背景色
+        if (theApp.m_taskbar_data.auto_set_background_color && theApp.m_win_version.IsWindows8OrLater()
+            && IsTaskbarWndValid() && theApp.m_taskbar_data.transparent_color != 0
+            && !m_is_foreground_fullscreen)
+        {
+            CRect rect;
+            ::GetWindowRect(m_tBarDlg->GetSafeHwnd(), rect);
+            int pointx{ rect.left - 1 };
+            if (theApp.m_taskbar_data.tbar_wnd_on_left && m_tBarDlg->IsTasksbarOnTopOrBottom())
+                pointx = rect.right + 1;
+            int pointy = rect.bottom;
+            if (pointx < 0) pointx = 0;
+            if (pointx >= m_screen_size.cx) pointx = m_screen_size.cx - 1;
+            if (pointy < 0) pointy = 0;
+            if (pointy >= m_screen_size.cy) pointy = m_screen_size.cy - 1;
+            COLORREF color = ::GetPixel(m_desktop_dc, pointx, pointy);        //取任务栏窗口左侧1像素处的颜色作为背景色
+            if (!CCommon::IsColorSimilar(color, theApp.m_taskbar_data.back_color) && (/*theApp.m_win_version.IsWindows10LightTheme() ||*/ color != 0))
+            {
+                bool is_taskbar_transparent{ CTaskbarDefaultStyle::IsTaskbarTransparent(theApp.m_taskbar_data) };
+                theApp.m_taskbar_data.back_color = color;
+                CTaskbarDefaultStyle::SetTaskabrTransparent(is_taskbar_transparent, theApp.m_taskbar_data);
+                if(is_taskbar_transparent)
+                    m_tBarDlg->ApplyWindowTransparentColor();
             }
         }
 
