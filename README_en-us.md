@@ -20,7 +20,12 @@ You can also [click here](https://github.com/zhongyang219/TrafficMonitor/actions
 * Support the window displayed in the taskbar.<br>
 * Support for changing skin and customizing skin.<br>
 * Historical traffic statistics.<br>
+# Instructions for use
+
+**[Click here](https://github.com/zhongyang219/TrafficMonitor/wiki) to go to the Wiki page to view detailed documentation on TrafficMonitor (Only Chinese Available).**
+
 # Screen Shots
+
 Main Suspension Window:<br>
 ![](./Screenshots/en_us/main1.png)<br>
 Right-Click Menu:<br>
@@ -32,7 +37,7 @@ Colorful Skins:<br>
 Change Skins:<br>
 ![](./Screenshots/en_us/selecte_skin.png)<br>
 Options:<br>
-![](./Screenshots/en_us/option.png)<br>
+<img src="./Screenshots/en_us/option.jpg" style="zoom:80%;" /><br>
 
 # Update log
 **[Click here to view the update log.](./UpdateLog/update_log_en-us.md)**

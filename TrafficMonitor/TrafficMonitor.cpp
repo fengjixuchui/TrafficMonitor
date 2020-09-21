@@ -20,6 +20,7 @@
 BEGIN_MESSAGE_MAP(CTrafficMonitorApp, CWinApp)
 	//ON_COMMAND(ID_HELP, &CWinApp::OnHelp)
 	ON_COMMAND(ID_HELP, &CTrafficMonitorApp::OnHelp)
+    ON_COMMAND(ID_FREQUENTY_ASKED_QUESTIONS, &CTrafficMonitorApp::OnFrequentyAskedQuestions)
 END_MESSAGE_MAP()
 
 
@@ -30,7 +31,7 @@ CTrafficMonitorApp::CTrafficMonitorApp()
 {
 	self = this;
 	// 支持重新启动管理器
-	m_dwRestartManagerSupportFlags = AFX_RESTART_MANAGER_SUPPORT_RESTART;
+	//m_dwRestartManagerSupportFlags = AFX_RESTART_MANAGER_SUPPORT_RESTART;
 
 	// TODO: 在此处添加构造代码，
 	// 将所有重要的初始化放置在 InitInstance 中
@@ -681,14 +682,14 @@ BOOL CTrafficMonitorApp::InitInstance()
 	CCommon::SetThreadLanguage(m_general_data.language);
 
 #ifndef _DEBUG
-	wstring cmd_line{ m_lpCmdLine };
-	bool is_restart{ cmd_line.find(L"RestartByRestartManager") != wstring::npos };		//如果命令行参数中含有字符串“RestartByRestartManager”则说明程序是被Windows重新启动的
-	//bool when_start{ CCommon::WhenStart(m_no_multistart_warning_time) };
-	if (m_exit_when_start_by_restart_manager && is_restart && is_windows10_fall_creator)		//当前Windows版本是秋季创意者更新时，如果程序被重新启动，则直接退出程序
-	{
-		//AfxMessageBox(_T("调试信息：程序已被Windows的重启管理器重新启动。"));
-		return FALSE;
-	}
+	//wstring cmd_line{ m_lpCmdLine };
+	//bool is_restart{ cmd_line.find(L"RestartByRestartManager") != wstring::npos };		//如果命令行参数中含有字符串“RestartByRestartManager”则说明程序是被Windows重新启动的
+	////bool when_start{ CCommon::WhenStart(m_no_multistart_warning_time) };
+	//if (m_exit_when_start_by_restart_manager && is_restart && is_windows10_fall_creator)		//当前Windows版本是秋季创意者更新时，如果程序被重新启动，则直接退出程序
+	//{
+	//	//AfxMessageBox(_T("调试信息：程序已被Windows的重启管理器重新启动。"));
+	//	return FALSE;
+	//}
 
 	//检查是否已有实例正在运行
 	HANDLE hMutex = ::CreateMutex(NULL, TRUE, _T("TrafficMonitor-1419J3XLKL1w8OZc"));
@@ -796,10 +797,17 @@ BOOL CTrafficMonitorApp::InitInstance()
 void CTrafficMonitorApp::OnHelp()
 {
 	// TODO: 在此添加命令处理程序代码
-	CString language_code;
-	language_code.LoadString(IDS_LANGUAGE_CODE);
-	if (language_code == _T("2"))
-		ShellExecute(NULL, _T("open"), _T("https://github.com/zhongyang219/TrafficMonitor/blob/master/Help.md"), NULL, NULL, SW_SHOW);	//打开超链接;
-	else
-		ShellExecute(NULL, _T("open"), _T("https://github.com/zhongyang219/TrafficMonitor/blob/master/Help_en-us.md"), NULL, NULL, SW_SHOW);
+    ShellExecute(NULL, _T("open"), _T("https://github.com/zhongyang219/TrafficMonitor/wiki"), NULL, NULL, SW_SHOW);
+}
+
+
+void CTrafficMonitorApp::OnFrequentyAskedQuestions()
+{
+    // TODO: 在此添加命令处理程序代码
+    CString language_code;
+    language_code.LoadString(IDS_LANGUAGE_CODE);
+    if (language_code == _T("2"))
+        ShellExecute(NULL, _T("open"), _T("https://github.com/zhongyang219/TrafficMonitor/blob/master/Help.md"), NULL, NULL, SW_SHOW);
+    else
+    	ShellExecute(NULL, _T("open"), _T("https://github.com/zhongyang219/TrafficMonitor/blob/master/Help_en-us.md"), NULL, NULL, SW_SHOW);
 }

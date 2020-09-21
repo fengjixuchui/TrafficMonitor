@@ -930,7 +930,8 @@ void CTrafficMonitorDlg::OnTimer(UINT_PTR nIDEvent)
         unsigned __int64 cur_in_speed{}, cur_out_speed{};       //本次监控时间间隔内的上传和下载速度
 
 		//如果发送和接收的字节数为0或上次发送和接收的字节数为0或当前连接已改变时，网速无效
-		if ((m_in_bytes == 0 && m_out_bytes == 0) || (m_last_in_bytes == 0 && m_last_out_bytes == 0) || m_connection_change_flag)
+		if ((m_in_bytes == 0 && m_out_bytes == 0) || (m_last_in_bytes == 0 && m_last_out_bytes == 0) || m_connection_change_flag
+            || m_last_in_bytes > m_in_bytes || m_last_out_bytes > m_out_bytes)
 		{
 			cur_in_speed = 0;
 			cur_out_speed = 0;
@@ -940,11 +941,11 @@ void CTrafficMonitorDlg::OnTimer(UINT_PTR nIDEvent)
 			cur_in_speed = m_in_bytes - m_last_in_bytes;
 			cur_out_speed = m_out_bytes - m_last_out_bytes;
 		}
-		//如果大于1GB/s，说明可能产生了异常，网速无效
-		if (cur_in_speed > 1073741824)
-			cur_in_speed = 0;
-		if (cur_out_speed > 1073741824)
-			cur_out_speed = 0;
+		////如果大于1GB/s，说明可能产生了异常，网速无效
+		//if (cur_in_speed > 1073741824)
+		//	cur_in_speed = 0;
+		//if (cur_out_speed > 1073741824)
+		//	cur_out_speed = 0;
 
         //将当前监控时间间隔的流量转换成每秒时间间隔内的流量
         theApp.m_in_speed = static_cast<unsigned int>(cur_in_speed * 1000 / theApp.m_general_data.monitor_time_span);
