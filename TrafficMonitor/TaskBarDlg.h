@@ -1,7 +1,6 @@
 #pragma once
 #include "Common.h"
 #include "afxwin.h"
-//#include "StaticEx.h"
 #include "DrawCommon.h"
 #include "IniHelper.h"
 #include "CommonData.h"
@@ -9,7 +8,7 @@
 // CTaskBarDlg 对话框
 #define TASKBAR_WND_HEIGHT theApp.DPI(32)				//任务栏窗口的高度
 #define WM_TASKBAR_MENU_POPED_UP (WM_USER + 1004)		//定义任务栏窗口右键菜单弹出时发出的消息
-#define TASKBAR_GRAPH_MAX_LEN 500						//历史数据存储最大长度
+//#define TASKBAR_GRAPH_MAX_LEN 600						//历史数据存储最大长度
 #define TASKBAR_GRAPH_STEP 5							//几秒钟画一条线
 
 class CTaskBarDlg : public CDialogEx
@@ -25,7 +24,7 @@ public:
 	void ShowInfo(CDC* pDC); 	//将信息绘制到控件上
 	void TryDrawStatusBar(CDrawCommon& drawer, const CRect& rect_bar, int usage_percent); //绘制CPU/内存状态条
 
-	void TryDrawGraph(CDrawCommon& drawer, const CRect &value_rect, CList<int,int> &list);		// 绘制CPU/内存动态图
+	void TryDrawGraph(CDrawCommon& drawer, const CRect &value_rect, DisplayItem item_type);		// 绘制CPU/内存动态图
 
 	bool AdjustWindowPos();	//设置窗口在任务栏中的位置
 	void ApplyWindowTransparentColor();
@@ -44,22 +43,28 @@ protected:
 	CRect m_rcBar;		//初始状态时任务栏窗口的矩形区域
 	CRect m_rcMin;		//初始状态时最小化窗口的矩形区域
 	CRect m_rect;		//当前窗口的矩形区域
-	int m_window_width_full;		//显示所有信息时窗口宽度
-	int m_window_width_net_speed;	//只显示网速时的窗口宽度
-	int m_window_width_cpu_memory;	//只显示CPU和内存利用率时的窗口宽度
-	int m_window_height;
-	int m_up_lable_width;	//上传标签的宽度
-	int m_down_lable_width;	//下载标签的宽度
-	int m_cpu_lable_width;		//CPU标签的宽度
-	int m_memory_lable_width;	//内存标签的宽度
-	int m_ud_value_width;		//上传、下载数值的宽度
-	int m_cm_value_width;		//CPU、内存数值的宽度
+    int m_window_width{};
+    int m_window_height{};
+
+    //任务栏各个部分的宽度
+    struct ItemWidth
+    {
+        int label_width{};      //标签部分宽度
+        int value_width{};      //数值部分宽度
+
+        int TotalWidth() const  //总宽度
+        {
+            return label_width + value_width;
+        }
+    };
+
+    std::map<DisplayItem, ItemWidth> m_item_widths;   //任务栏窗口每个部分的宽度
+    std::map<DisplayItem, int> m_item_display_width;    //任务栏窗口每个部分实际显示的宽度
 
 	int m_min_bar_width;	//最小化窗口缩小宽度后的宽度
 	int m_min_bar_height;	//最小化窗口缩小高度后的高度（用于任务栏在屏幕左侧或右侧时）
 
-	CList<int, int> m_cpu_his;		//保存cpu使用率历史数据的链表，链表保存按照时间顺序，越靠近头部数据越新
-	CList<int, int> m_memory_his;	//保存内存占用率历史数据的链表，链表保存按照时间顺序，越靠近头部数据越新
+    std::map<DisplayItem, CList<int, int>> m_map_history_data;  //保存各项数据历史数据的链表，链表保存按照时间顺序，越靠近头部数据越新
 
 	int m_left_space{};			//最小化窗口和二级窗口窗口左侧的边距
 	int m_top_space{};			//最小化窗口和二级窗口窗口顶部的边距（用于任务栏在屏幕左侧或右侧时）
@@ -75,15 +80,19 @@ protected:
 	void CheckTaskbarOnTopOrBottom();		//检查任务栏是否在屏幕的顶部或底部，并将结果保存在m_taskbar_on_top_or_bottom中
 	CString GetMouseTipsInfo();		//获取鼠标提示
 
-	void AddHisToList(CList<int,int> &list, int current_usage_percent);		//将当前利用率数值添加进链表
+	void AddHisToList(DisplayItem item_type, int current_usage_percent);		//将当前利用率数值添加进链表
 
-	int GetWindowWidth();
-	int GetWindowHeight();
+    //绘制任务栏窗口中的一个显示项目
+    //  drawer: 绘图类的对象
+    //  type: 项目的类型
+    //  rect: 绘制矩形区域
+    //  label_width: 标签区域的宽度
+    void DrawDisplayItem(CDrawCommon& drawer, DisplayItem type, CRect rect, int label_width);
 
 public:
 	void SetTextFont();
 	void ApplySettings();
-	void CalculateWindowWidth();		//计算窗口需要的宽度
+    void CalculateWindowSize();		//计算窗口每部分的大小，及各个部分的宽度。窗口大小保存到m_window_width和m_window_height中，各部分宽度保存到m_item_widths中
 
 	void SetToolTipsTopMost();			//设置鼠标提示置顶
 	void UpdateToolTips();
@@ -98,6 +107,10 @@ public:
 	static bool IsShowDown();
 	static bool IsShowCpu();
 	static bool IsShowMemory();
+    static bool IsShowCpuTemperature();
+    static bool IsShowGpuTemperature();
+    static bool IsShowHddTemperature();
+    static bool IsShowMainboardTemperature();
 
 	DECLARE_MESSAGE_MAP()
 
