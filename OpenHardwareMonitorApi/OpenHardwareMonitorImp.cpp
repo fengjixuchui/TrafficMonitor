@@ -3,6 +3,7 @@
 #include "stdafx.h"
 
 #include "OpenHardwareMonitorImp.h"
+#include <vector>
 
 namespace OpenHardwareMonitorApi
 {
@@ -42,20 +43,35 @@ namespace OpenHardwareMonitorApi
         return m_main_board_temperature;
     }
 
-    float COpenHardwareMonitor::GetHardwareTemperature(IHardware^ hardware)
+    bool COpenHardwareMonitor::GetHardwareTemperature(IHardware^ hardware, float& temperature)
     {
-        for (int j = 0; j < hardware->Sensors->Length; j++)
+        temperature = 0;
+        std::vector<float> all_temperature;
+        for (int i = 0; i < hardware->Sensors->Length; i++)
         {
             //找到温度传感器
-            if (hardware->Sensors[j]->SensorType == SensorType::Temperature)
+            if (hardware->Sensors[i]->SensorType == SensorType::Temperature)
             {
-                float temperature = Convert::ToDouble(hardware->Sensors[j]->Value);
-                //System::Diagnostics::Debug::WriteLine("Temperature:");
-                //System::Diagnostics::Debug::WriteLine(computer->Hardware[i]->Sensors[j]->Value.ToString());
-                return temperature;
+                float cur_temperture = Convert::ToDouble(hardware->Sensors[i]->Value);
+                all_temperature.push_back(cur_temperture);
             }
         }
-        return 0;
+        if (!all_temperature.empty())
+        {
+            //如果有多个温度传感器，则取平均值
+            float sum{};
+            for (auto i : all_temperature)
+                sum += i;
+            temperature = sum / all_temperature.size();
+            return true;
+       }
+        //如果没有找到温度传感器，则在SubHardware中寻找
+        for (int i = 0; i < hardware->SubHardware->Length; i++)
+        {
+            if (GetHardwareTemperature(hardware->SubHardware[i], temperature))
+                return true;
+        }
+        return false;
     }
 
     void COpenHardwareMonitor::GetHardwareInfo()
@@ -78,23 +94,23 @@ namespace OpenHardwareMonitorApi
             {
             case HardwareType::CPU:
                 if (m_cpu_temperature == 0)
-                    m_cpu_temperature = GetHardwareTemperature(computer->Hardware[i]);
+                    GetHardwareTemperature(computer->Hardware[i], m_cpu_temperature);
                 break;
             case HardwareType::GpuNvidia:
                 if (m_gpu_nvidia_temperature == 0)
-                    m_gpu_nvidia_temperature = GetHardwareTemperature(computer->Hardware[i]);
+                    GetHardwareTemperature(computer->Hardware[i], m_gpu_nvidia_temperature);
                 break;
             case HardwareType::GpuAti:
                 if (m_gpu_ati_temperature == 0)
-                    m_gpu_ati_temperature = GetHardwareTemperature(computer->Hardware[i]);
+                    GetHardwareTemperature(computer->Hardware[i], m_gpu_ati_temperature);
                 break;
             case HardwareType::HDD:
                 if (m_hdd_temperature == 0)
-                    m_hdd_temperature = GetHardwareTemperature(computer->Hardware[i]);
+                    GetHardwareTemperature(computer->Hardware[i], m_hdd_temperature);
                 break;
             case HardwareType::Mainboard:
                 if (m_main_board_temperature == 0)
-                    m_main_board_temperature = GetHardwareTemperature(computer->Hardware[i]);
+                    GetHardwareTemperature(computer->Hardware[i], m_main_board_temperature);
                 break;
             default:
                 break;
